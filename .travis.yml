@@ -3,26 +3,40 @@ sudo: false
 
 matrix:
   include:
-    # Lint
-    - python: 2.7
-      env: TOXENV=lint
-    - python: 3.6
-      env: TOXENV=lint
 
-    # Docs
+    # Linting
+    - python: 2.7
+      env: SCRIPT=lint
     - python: 3.6
-      env: TOXENV=docs
+      env: SCRIPT=lint
+
+    # Black
+    - python: 3.6
+      env: SCRIPT=
 
     # Packaging
-    - python: 3.6
-      env: TOXENV=packaging
+    - python: 3.6-dev
+      env: SCRIPT=packaging
 
-    # Building Library.py
+    # Building virtualbox/_base.py
+    - python: 3.6-dev
+      env: SCRIPT=build
+
+    # Unit tests
     - python: 2.7
-      env: TOXENV=build
+      env: SCRIPT=tests
 
-    - python: 3.6
-      env: TOXENV=build
+    - python: 3.4
+      env: SCRIPT=tests
+
+    - python: 3.5
+      env: SCRIPT=tests
+
+    - python: 3.6-dev
+      env: SCRIPT=tests
+
+    - python: 3.7-dev
+      env: SCRIPT=tests
 
 cache:
   - pip
@@ -30,10 +44,17 @@ cache:
     - ${HOME}/.cache
 
 install:
-  - python -m pip install -U tox setuptools pip
+  - python -m pip install -r dev-requirements.txt -r requirements.txt
 
 script:
-  - tox
+  - chmod a+x ./.travis/script.sh
+  - ./.travis/script.sh
+
+after_success:
+  - |
+    if [ "$SCRIPT" = "tests" ]; then
+        codecov
+    fi
 
 notifications:
   email: false

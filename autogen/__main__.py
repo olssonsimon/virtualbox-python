@@ -13,11 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__name__ = "virtualbox"
-__author__ = "Michael Dorman"
-__author_email__ = "mjdorma+pyvbox@gmail.com"
-__maintainer__ = "Seth Michael Larson"
-__maintainer_email__ = "sethmichaellarson@gmail.com"
-__version__ = "2.0.0"
-__license__ = "Apache-2.0"
-__url__ = "https://github.com/SethMichaelLarson/virtualbox-python"
+from autogen import main
+
+main()
