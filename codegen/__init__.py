@@ -20,8 +20,13 @@ import shutil
 import tarfile
 import requests
 from lxml import etree
-from autogen.render import (
-    EnumRender, EnumValueRender, InterfaceRender, MethodRender, PropertyRender
+from codegen.render import (
+    EnumRender,
+    EnumValueRender,
+    InterfaceRender,
+    MethodRender,
+    PropertyRender,
+    ErrorRender,
 )
 
 
@@ -42,7 +47,9 @@ XIDL_HEADER = """# Copyright 2018 Seth Michael Larson (sethmichaellarson@protonm
 # limitations under the License.
 
 import enum
-from ._base import Interface
+from ._base import Interface, VirtualBoxException
+
+
 """
 
 XIDL_FOOTER = """
@@ -122,7 +129,13 @@ def main():
     renders = []
 
     for el in xml.iter():
-        if el.tag == "enum":
+        if el.tag == "result":
+            name = el.get("name")
+            value = el.get("value")
+            desc = el.get("desc")
+            if name is not None and value is not None:
+                renders.append(ErrorRender(name, int(value, 16), desc))
+        elif el.tag == "enum":
             enum_reader_desc = None
             value_renders = []
             for value in el.getchildren():
@@ -135,29 +148,15 @@ def main():
 
                     value_renders.append(
                         EnumValueRender(
-                            value.get("name"),
-                            value.get("value"),
-                            enum_value_desc,
+                            value.get("name"), value.get("value"), enum_value_desc
                         )
                     )
                 elif value.tag == "desc":
                     enum_reader_desc = value.text
-            enum_render = EnumRender(
-                el.get("name"), enum_reader_desc, value_renders
-            )
+            enum_render = EnumRender(el.get("name"), enum_reader_desc, value_renders)
             renders.append(enum_render)
 
         elif el.tag == "interface":
-            if el.get('name') == 'IVirtualBox':
-                print('!!!')
-                should_break = False
-                for r in renders:
-                    if hasattr(r, 'name') and r.name == el.get('name'):
-                        should_break =True
-                        break
-                if should_break:
-                    continue
-
             extends = el.get("extends")
             if extends is None or extends == "$unknown" or extends == "$errorinfo":
                 extends = "Interface"
@@ -240,6 +239,14 @@ def main():
         f.truncate()
         f.write(XIDL_HEADER)
         for render in renders:
+            # There's a rogue empty VirtualBox interface we don't want to render.
+            if isinstance(
+                render, InterfaceRender
+            ) and render.name == "VirtualBox" and len(
+                render.method_renders
+            ) == 0:
+                continue
+
             for l in render.render():
                 f.write(l + "\n")
             f.write("\n")

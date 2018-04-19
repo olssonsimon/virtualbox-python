@@ -11,16 +11,12 @@ matrix:
       env: SCRIPT=lint
 
     # Black
-    - python: 3.6
-      env: SCRIPT=
+    - python: 3.6-dev
+      env: SCRIPT=black
 
     # Packaging
     - python: 3.6-dev
       env: SCRIPT=packaging
-
-    # Building virtualbox/_base.py
-    - python: 3.6-dev
-      env: SCRIPT=build
 
     # Unit tests
     - python: 2.7

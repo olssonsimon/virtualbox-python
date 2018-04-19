@@ -19,10 +19,8 @@ import builtins
 import typing
 
 
-BASE_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
-EXTENSION_DIR = os.path.join(BASE_DIR, "autogen", "extensions")
+BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+EXTENSION_DIR = os.path.join(BASE_DIR, "codegen", "extensions")
 HEX_REGEX = re.compile(r"^0x[0-9A-Fa-f]+$")
 BASIC_TYPES = {"bytes", "int", "str", "bool"}
 
@@ -89,10 +87,43 @@ def python_type(type_: str, safearray: bool) -> str:
     return pytype
 
 
-def class_type(type_: str):
+def class_type(type_: str) -> str:
     if "Dhcp" in type_:
         type_ = type_.replace("Dhcp", "DHCP")
     return type_
+
+
+def error_type(type_: str) -> str:
+    new_type = []
+    to_cap = True
+    for c in type_:
+        if c == "_":
+            to_cap = True
+        elif to_cap:
+            new_type.append(c.upper())
+            to_cap = False
+        else:
+            new_type.append(c.lower())
+    return "".join(new_type)
+
+
+class ErrorRender(object):
+
+    def __init__(self, name, value, desc):
+        self.name = name
+        self.value = value
+        self.desc = desc
+
+    def render(self):
+        return [
+            f"class {error_type(self.name.replace('VBOX_E_', ''))}(VirtualBoxException):",
+            f'    """{self.desc}"""',
+            f"    name = {self.name!r}",
+            f"    value = {hex(self.value).upper().replace('X', 'x')}",
+        ]
+
+    def __repr__(self):
+        return f"<ErrorRender name={self.name} value={hex(self.value)}"
 
 
 class EnumRender(object):
@@ -135,9 +166,7 @@ class EnumValueRender(object):
         self.desc = desc
 
     def render(self) -> typing.List[str]:
-        return [
-            f"    {pythonic_name(self.name).upper().rstrip('_')} = {self.value!r}"
-        ]
+        return [f"    {pythonic_name(self.name).upper().rstrip('_')} = {self.value!r}"]
 
     def __repr__(self):
         return f"<EnumValueRender name={self.name} value={self.value}>"
@@ -216,16 +245,12 @@ class MethodRender(object):
         data.append('        """')
 
         # Creates parameters for the _call_method() method.
-        call_method_params = ", ".join(
-            [pythonic_name(p[0]) for p in self.params_in]
-        )
+        call_method_params = ", ".join([pythonic_name(p[0]) for p in self.params_in])
         if len(self.params_in) > 0:
             call_method_params = ", " + call_method_params
 
         if len(self.params_out) > 1:
-            unpacked_tuple = ", ".join(
-                pythonic_name(p[0]) for p in self.params_out
-            )
+            unpacked_tuple = ", ".join(pythonic_name(p[0]) for p in self.params_out)
             data.append(
                 f"        {unpacked_tuple} = self._call_method('{self.name}'{call_method_params})"
             )
@@ -239,16 +264,19 @@ class MethodRender(object):
                     )
             data.append(f"        return {unpacked_tuple}")
         elif len(self.params_out) == 1:
+            _, param_out_type, _, _ = self.params_out[0]
+            param_out_type = python_type(param_out_type, False)
+            if param_out_type.startswith("typing.List"):
+                param_out_type = "list"
             data.extend(
                 [
-                    f"        ret = self._call_method('{self.name}'{call_method_params})",
+                    f"        ret = {param_out_type}(self._call_method('{self.name}'{call_method_params}))",
                     "        return ret",
                 ]
             )
         else:
             data.append(
-                f"        self._call_method('%s'%s)"
-                % (self.name, call_method_params)
+                f"        self._call_method('%s'%s)" % (self.name, call_method_params)
             )
         return data
 
@@ -277,9 +305,7 @@ class PropertyRender(object):
         rtype = python_type(self.type_, False)
         if self.safearray:
             if rtype in BASIC_TYPES:
-                data.append(
-                    f"        return list(self._get_property('{self.name}'))"
-                )
+                data.append(f"        return list(self._get_property('{self.name}'))")
             else:
                 data.append(
                     f"        return [{rtype}(obj) for obj in self._get_property('{self.name}')]"
@@ -335,9 +361,7 @@ class InterfaceRender(object):
                             past_license = True
                     else:
                         data.append(line)
-            return "".join(data).strip().replace(
-                "(object):", "(_%s):" % self.name
-            )
+            return "".join(data).strip().replace("(object):", "(_%s):" % self.name)
 
         else:
             return ""

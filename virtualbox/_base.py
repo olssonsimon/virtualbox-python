@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 import copy
 import enum
 import inspect
@@ -25,6 +26,7 @@ import contextlib
 
 
 _MANAGERS = {}
+_SYSTEM = platform.system()
 
 
 @contextlib.contextmanager
@@ -36,24 +38,22 @@ def import_vboxapi():
     try:
         import vboxapi
     except ImportError:
-        system = platform.system()
-        py_mm_ver = sys.version_info[:2]
-        py_major = sys.version_info[0]
+        major, minor = sys.version_info[:2]
         packages = ["vboxapi"]
 
-        if system == "Windows":
+        if _SYSTEM == "Windows":
             packages.extend(
                 ["win32com", "win32", "win32api", "pywintypes", "win32comext"]
             )
             search = [
-                "C:\\Python%s%s\\Lib\\site-packages" % py_mm_ver,
-                "C:\\Python%s%s\\Lib\\site-packages\\win32" % py_mm_ver,
-                "C:\\Python%s%s\\Lib\\site-packages\\win32\\lib" % py_mm_ver,
+                "C:\\Python%s%s\\Lib\\site-packages" % (major, minor),
+                "C:\\Python%s%s\\Lib\\site-packages\\win32" % (major, minor),
+                "C:\\Python%s%s\\Lib\\site-packages\\win32\\lib" % (major, minor),
                 "C:\\Program Files\\Oracle\\VirtualBox\\sdk\\install",
                 "C:\\Program Files (x86)\\Oracle\\VirtualBox\\sdk\\install",
             ]
 
-            for x in ["", py_major]:
+            for x in ["", major]:
                 search.extend(
                     [
                         "C:\\Anaconda%s\\Lib\\site-packages" % x,
@@ -62,15 +62,15 @@ def import_vboxapi():
                     ]
                 )
 
-        elif system == "Linux":
+        elif _SYSTEM == "Linux":
             search = [
-                "/usr/lib/python%s.%s/dist-packages" % py_mm_ver,
-                "/usr/lib/python%s.%s/site-packages" % py_mm_ver,
+                "/usr/lib/python%s.%s/dist-packages" % (major, minor),
+                "/usr/lib/python%s.%s/site-packages" % (major, minor),
                 "/usr/share/pyshared",
             ]
 
-        elif system == "Darwin":
-            search = ["/Library/Python/%s.%s/site-packages" % py_mm_ver]
+        elif _SYSTEM == "Darwin":
+            search = ["/Library/Python/%s.%s/site-packages" % (major, minor)]
         else:
             # No idea where to look...
             search = []
@@ -140,9 +140,7 @@ class Manager(object):
     @property
     def manager(self):
         if _MANAGERS is None:
-            raise RuntimeError(
-                "Can not get the manager following a system exit."
-            )
+            raise RuntimeError("Can not get the manager following a system exit.")
 
         return _MANAGERS[multiprocessing.current_process().ident]
 
@@ -150,9 +148,7 @@ class Manager(object):
     def manager(self, value):
         pid = multiprocessing.current_process().ident
         if _MANAGERS is None:
-            raise RuntimeError(
-                "Can not set the manager following a system exit."
-            )
+            raise RuntimeError("Can not set the manager following a system exit.")
 
         if pid not in _MANAGERS:
             _MANAGERS[pid] = value
@@ -181,14 +177,34 @@ class Manager(object):
         return self.manager.getBinDir()
 
 
+_VIRTUALBOX_EXCEPTIONS = {}
+
+
+class VirtualBoxExceptionMeta(type):
+
+    def __init__(cls, *_):
+        if cls.value != -1:
+            _VIRTUALBOX_EXCEPTIONS[cls.value] = cls
+
+
+@six.add_metaclass(VirtualBoxExceptionMeta)
+class VirtualBoxException(Exception):
+    name = "undefined"
+    value = -1
+    message = ""
+
+    def __init__(self, exc, errno, message):
+        self.exc = exc
+        self.errno = errno
+        self.message = message
+
+
 class Interface(object):
 
     def __init__(self, interface=None):
         if isinstance(interface, Interface):
             manager = Manager()
-            self._interface = manager.cast_object(
-                interface, self.__class__
-            )._interface
+            self._interface = manager.cast_object(interface, self.__class__)._interface
         else:
             self._interface = interface
 
@@ -202,7 +218,7 @@ class Interface(object):
                 return value._interface
 
             elif isinstance(value, enum.Enum):
-                return int(value)
+                return int(value.value)
 
             else:
                 return value
@@ -211,7 +227,7 @@ class Interface(object):
             return [cast_to_value_type(x) for x in value]
 
         else:
-            cast_to_value_type(value)
+            return cast_to_value_type(value)
 
     def _search_property(self, name, prefix=None):
         property_names = [name]
@@ -230,9 +246,7 @@ class Interface(object):
             break
 
         else:
-            raise AttributeError(
-                "Failed to find attribute %s in %s" % (name, self)
-            )
+            raise AttributeError("Failed to find attribute %s in %s" % (name, self))
 
         return prop
 
@@ -266,7 +280,20 @@ class Interface(object):
         params = [self._cast_to_value_type(param) for param in params]
         try:
             ret = method(*params)
-        except Exception as e:
-            raise e
+        except Exception as exc:
+            errno = getattr(exc, "errno", getattr(exc, "hresult", -1))
+            errno &= 0xFFFFFFFF
+
+            message = None
+            if _SYSTEM == "Windows":
+                if hasattr(exc, "args"):
+                    message = exc.args[2][2]
+
+            errcls = _VIRTUALBOX_EXCEPTIONS.get(errno, VirtualBoxException)
+            errobj = errcls()
+            errobj.message = message
+            errobj.exc = exc
+            errobj.errno = errno
+            raise errobj
 
         return ret

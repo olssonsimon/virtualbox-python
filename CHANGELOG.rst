@@ -6,7 +6,8 @@ Changelog
 
 - New version string which follows VirtualBox's major and minor version
   along with the ``virtualbox`` packages revision number.
-- Switched to code-generation
+- Switched to code-generation from ``VirtualBox.xidl`` file.
+- Added interface similar to ``subprocess.Popen`` for ``GuestSession``.
 
 1.3.2 (21/02/2018)
 ------------------
