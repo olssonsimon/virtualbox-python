@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Pythonic wrapper for the VirtualBox API
+"""VirtualBox API implementation for Python
 """
 
 from .__about__ import (  # noqa: F401
@@ -26,5 +26,27 @@ from .__about__ import (  # noqa: F401
     __license__,
     __url__,
 )
-from ._xidl import *
 from ._base import *
+from ._enums import (
+    AudioControllerType,
+    AudioCodecType,
+    AudioDriverType,
+DeviceType,
+    NATAliasMode,
+    NATProtocol
+)
+from ._audio import AudioAdapter
+from ._nat_engine import NATEngine, NetworkSettings
+from ._nat_network import NATNetwork
+
+__all__ = [
+    'AudioAdapter',
+    'AudioDriverType',
+    'AudioCodecType',
+    'AudioControllerType',
+    'NATNetwork',
+    'NetworkSettings',
+    'NATEngine',
+    'NATProtocol',
+    'NATAliasMode',
+]

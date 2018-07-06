@@ -1,37 +1,27 @@
 language: python
 sudo: false
+dist: xenial
 
 matrix:
   include:
 
     # Linting
-    - python: 2.7
-      env: SCRIPT=lint
-    - python: 3.6
+    - python: 3.7
       env: SCRIPT=lint
 
     # Black
-    - python: 3.6-dev
+    - python: 3.7
       env: SCRIPT=black
 
     # Packaging
-    - python: 3.6-dev
+    - python: 3.7
       env: SCRIPT=packaging
 
     # Unit tests
-    - python: 2.7
+    - python: 3.6
       env: SCRIPT=tests
 
-    - python: 3.4
-      env: SCRIPT=tests
-
-    - python: 3.5
-      env: SCRIPT=tests
-
-    - python: 3.6-dev
-      env: SCRIPT=tests
-
-    - python: 3.7-dev
+    - python: 3.7
       env: SCRIPT=tests
 
 cache:

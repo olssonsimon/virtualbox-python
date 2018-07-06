@@ -188,12 +188,15 @@ def main():
                         )
                     )
                 elif child.tag == "method":
+                    method_desc = None
                     params_in = []
                     params_out = []
                     param_return = None
 
                     for param in child.getchildren():
-                        if param.tag == "param":
+                        if param.tag == "desc" and param.text is not None:
+                            method_desc = param.text.strip()
+                        elif param.tag == "param":
                             param_desc = None
                             for param_el in param.getchildren():
                                 if param_el.tag == "desc" and param_el.text is not None:
@@ -220,7 +223,7 @@ def main():
                     method_renders.append(
                         MethodRender(
                             name=child.get("name"),
-                            desc=child.get("desc"),
+                            desc=method_desc,
                             params_in=params_in,
                             params_out=params_out,
                         )
@@ -242,7 +245,7 @@ def main():
             # There's a rogue empty VirtualBox interface we don't want to render.
             if isinstance(
                 render, InterfaceRender
-            ) and render.name == "VirtualBox" and len(
+            ) and len(
                 render.method_renders
             ) == 0:
                 continue

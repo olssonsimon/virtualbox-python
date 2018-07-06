@@ -13,6 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""This is the interface between this module and the `vboxapi` module
+that is distributed with VirtualBox. It's mostly been lifted from
+the `pyvbox` module.
+"""
+
 import six
 import copy
 import enum
@@ -33,7 +38,6 @@ _SYSTEM = platform.system()
 def import_vboxapi():
     """This import is designed to help when loading vboxapi inside of
     alternative Python environments (virtualenvs etc).
-    :rtype: vboxapi module
     """
     try:
         import vboxapi
@@ -165,12 +169,12 @@ class Manager(object):
         else:
             manager = self.manager
         from ._xidl import Session
-        return Session(interface=manager.getSessionObject(None))
+        return Session(_interface=manager.getSessionObject(None))
 
     def cast_object(self, interface_object, interface_class):
         name = interface_class.__name__
         i = self.manager.queryInterface(interface_object._interface, name)
-        return interface_class(interface=i)
+        return interface_class(_interface=i)
 
     @property
     def bin_path(self):
@@ -201,12 +205,12 @@ class VirtualBoxException(Exception):
 
 class Interface(object):
 
-    def __init__(self, interface=None):
-        if isinstance(interface, Interface):
+    def __init__(self, _interface=None):
+        if isinstance(_interface, Interface):
             manager = Manager()
-            self._interface = manager.cast_object(interface, self.__class__)._interface
+            self._interface = manager.cast_object(_interface, self.__class__)._interface
         else:
-            self._interface = interface
+            self._interface = _interface
 
     def __nonzero__(self):
         return bool(self._interface)

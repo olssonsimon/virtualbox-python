@@ -11,11 +11,6 @@ if [ "$SCRIPT" = "packaging" ]; then
     python setup.py check --metadata --restructuredtext --strict
 fi
 
-# Comparing latest VirtualBox API against virtualbox/_base.py
-if [ "$SCRIPT" = "build" ]; then
-    python build.py --build-against-master --force-download
-fi
-
 # Running all unit tests.
 if [ "$SCRIPT" = "tests" ]; then
     pytest tests/ --cov virtualbox

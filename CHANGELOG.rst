@@ -1,13 +1,13 @@
 Changelog
 =========
 
-5.2.0
--------
+2.5.0 (Unreleased)
+------------------
 
 - New version string which follows VirtualBox's major and minor version
   along with the ``virtualbox`` packages revision number.
-- Switched to code-generation from ``VirtualBox.xidl`` file.
-- Added interface similar to ``subprocess.Popen`` for ``GuestSession``.
+- Moved away from code generation into a Pythonic hand-crafted library.
+- Dropped support for Python 2.7, 3.4, and 3.5.
 
 1.3.2 (21/02/2018)
 ------------------
